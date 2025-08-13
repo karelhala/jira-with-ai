@@ -49,6 +49,31 @@ async function processBatches(issues, processor) {
   return results;
 }
 
+// Strip unnecessary fields from JIRA issues to reduce payload size
+function streamlineIssues(issues) {
+  return issues.map(issue => ({
+    key: issue.key,
+    fields: {
+      summary: issue.fields.summary,
+      description: issue.fields.description,
+      priority: issue.fields.priority ? {
+        name: issue.fields.priority.name
+      } : null,
+      issuetype: issue.fields.issuetype ? {
+        name: issue.fields.issuetype.name
+      } : null,
+      created: issue.fields.created,
+      updated: issue.fields.updated,
+      // Keep any custom fields that might be important
+      ...Object.fromEntries(
+        Object.entries(issue.fields).filter(([key]) => 
+          key.startsWith('customfield_') || key === 'labels' || key === 'components'
+        )
+      )
+    }
+  }));
+}
+
 // Clean JIRA issues by replacing backticks with single quotes
 function sanitizeIssues(issues) {
   const sanitizedIssues = JSON.parse(JSON.stringify(issues)); // Deep clone
@@ -71,14 +96,19 @@ function sanitizeIssues(issues) {
   return replaceBackticks(sanitizedIssues);
 }
 
-// Clean Gemini response by removing markdown code block formatting
+// Clean Gemini response by removing markdown code block formatting and explanatory text
 function cleanGeminiResponse(response) {
   if (typeof response !== 'string') {
     return response;
   }
   
-  // Remove ```json and ``` wrappers
   let cleaned = response.trim();
+  
+  // Find the first occurrence of ```json and remove everything before it
+  const jsonStartIndex = cleaned.indexOf('```json');
+  if (jsonStartIndex !== -1) {
+    cleaned = cleaned.substring(jsonStartIndex);
+  }
   
   // Check for various markdown code block patterns
   if (cleaned.startsWith('```json')) {
@@ -87,11 +117,23 @@ function cleanGeminiResponse(response) {
     cleaned = cleaned.replace(/^```\s*/, '');
   }
   
+  // Remove ending ``` marker
   if (cleaned.endsWith('```')) {
     cleaned = cleaned.replace(/\s*```$/, '');
   }
   
   return cleaned.trim();
+}
+
+// Save raw Gemini response for debugging
+function saveRawResponse(response, batchNumber, action) {
+  try {
+    const filename = `raw_${action}_${batchNumber}.txt`;
+    writeFileSync(filename, response);
+    console.log(`🔍 Raw response saved to ${filename}`);
+  } catch (error) {
+    console.error(`❌ Error saving raw response: ${error.message}`);
+  }
 }
 
 // Save issues to JSON file
@@ -220,8 +262,9 @@ async function runInteractiveCLI() {
                 validate: (input) => input.trim() ? true : 'Instructions cannot be empty'
               });
 
-              processedIssues = await processBatches(results.issues, async (batch) => {
-                const sanitizedBatch = sanitizeIssues(batch);
+              processedIssues = await processBatches(results.issues, async (batch, batchNumber) => {
+                const streamlinedBatch = streamlineIssues(batch);
+                const sanitizedBatch = sanitizeIssues(streamlinedBatch);
                 const prompt = `Please edit these JIRA issues according to the following instructions: ${editInstructions}
 
 Instructions:
@@ -236,12 +279,16 @@ ${JSON.stringify(sanitizedBatch, null, 2)}`;
                 console.log('\n📝 AI Response for this batch:');
                 console.log(response.substring(0, 500) + (response.length > 500 ? '...' : ''));
                 
+                // Save raw response for debugging
+                saveRawResponse(response, batchNumber, 'edit');
+                
                 try {
                   // Clean and parse the response as JSON
                   const cleanedResponse = cleanGeminiResponse(response);
                   const editedIssues = JSON.parse(cleanedResponse);
                   return Array.isArray(editedIssues) ? editedIssues : batch;
-                } catch {
+                } catch (e) {
+                  console.log('JSON Parse Error:', e.message);
                   // If parsing fails, return original batch
                   return batch;
                 }
@@ -249,11 +296,12 @@ ${JSON.stringify(sanitizedBatch, null, 2)}`;
               break;
 
             case 'analysis':
-              const sanitizedAnalysisIssues = sanitizeIssues(results.issues.slice(0, 100));
+              const streamlinedAnalysisIssues = streamlineIssues(results.issues.slice(0, 100));
+              const sanitizedAnalysisIssues = sanitizeIssues(streamlinedAnalysisIssues);
               const analysisPrompt = `Analyze these JIRA issues and provide insights including:
 - Overall summary and patterns
-- Status distribution
 - Priority analysis
+- Issue type distribution
 - Common themes and recommendations
 
 Issues:
@@ -266,8 +314,9 @@ ${JSON.stringify(sanitizedAnalysisIssues, null, 2)}`;
               break;
 
             case 'story-points':
-              processedIssues = await processBatches(results.issues, async (batch) => {
-                const sanitizedBatch = sanitizeIssues(batch);
+              processedIssues = await processBatches(results.issues, async (batch, batchNumber) => {
+                const streamlinedBatch = streamlineIssues(batch);
+                const sanitizedBatch = sanitizeIssues(streamlinedBatch);
                 const prompt = `Analyze these JIRA issues and estimate story points for each issue. Return the issues with added/updated story point estimates in the customfield_storypoints field.
 
 Consider complexity, effort, and uncertainty when estimating. Use fibonacci sequence (1, 2, 3, 5, 8, 13, 21).
@@ -279,24 +328,29 @@ ${JSON.stringify(sanitizedBatch, null, 2)}`;
                 console.log('\n📊 Story Points Analysis for this batch:');
                 console.log(response.substring(0, 500) + (response.length > 500 ? '...' : ''));
                 
+                // Save raw response for debugging
+                saveRawResponse(response, batchNumber, 'story-points');
+                
                 try {
                   const cleanedResponse = cleanGeminiResponse(response);
                   const updatedIssues = JSON.parse(cleanedResponse);
                   return Array.isArray(updatedIssues) ? updatedIssues : batch;
-                } catch {
+                } catch (e) {
+                  console.log('JSON Parse Error:', e.message);
                   return batch;
                 }
               });
               break;
 
             case 'workflow':
-              processedIssues = await processBatches(results.issues, async (batch) => {
-                const sanitizedBatch = sanitizeIssues(batch);
-                const prompt = `Analyze these JIRA issues and recommend appropriate workflow transitions based on their current status, content, and context. Add recommendations to each issue.
+              processedIssues = await processBatches(results.issues, async (batch, batchNumber) => {
+                const streamlinedBatch = streamlineIssues(batch);
+                const sanitizedBatch = sanitizeIssues(streamlinedBatch);
+                const prompt = `Analyze these JIRA issues and recommend appropriate workflow transitions based on their content and context. Add recommendations to each issue.
 
 Consider:
-- Current status and typical workflow progression
 - Issue content and completion indicators
+- Priority and type of work
 - Dependencies and blockers
 
 Issues:
@@ -306,19 +360,24 @@ ${JSON.stringify(sanitizedBatch, null, 2)}`;
                 console.log('\n🔄 Workflow Recommendations for this batch:');
                 console.log(response.substring(0, 500) + (response.length > 500 ? '...' : ''));
                 
+                // Save raw response for debugging
+                saveRawResponse(response, batchNumber, 'workflow');
+                
                 try {
                   const cleanedResponse = cleanGeminiResponse(response);
                   const updatedIssues = JSON.parse(cleanedResponse);
                   return Array.isArray(updatedIssues) ? updatedIssues : batch;
-                } catch {
+                } catch (e) {
+                  console.log('JSON Parse Error:', e.message);
                   return batch;
                 }
               });
               break;
 
             case 'work-type':
-              processedIssues = await processBatches(results.issues, async (batch) => {
-                const sanitizedBatch = sanitizeIssues(batch);
+              processedIssues = await processBatches(results.issues, async (batch, batchNumber) => {
+                const streamlinedBatch = streamlineIssues(batch);
+                const sanitizedBatch = sanitizeIssues(streamlinedBatch);
                 const workTypesDescription = WORK_TYPES.map(wt => 
                   `- ${wt.name}: ${wt.description}`
                 ).join('\n');
@@ -345,13 +404,16 @@ ${JSON.stringify(sanitizedBatch, null, 2)}`;
                 console.log('\n🏷️ AI Work Type Classification for this batch:');
                 console.log(response.substring(0, 500) + (response.length > 500 ? '...' : ''));
                 
+                // Save raw response for debugging
+                saveRawResponse(response, batchNumber, 'work-type');
+                
                 try {
                   const cleanedResponse = cleanGeminiResponse(response);
                   console.log('Cleaned response:', cleanedResponse.substring(0, 200) + (cleanedResponse.length > 200 ? '...' : ''));
                   const classifiedIssues = JSON.parse(cleanedResponse);
                   return Array.isArray(classifiedIssues) ? classifiedIssues : batch;
                 } catch (e) {
-                  console.log(e);
+                  console.log('JSON Parse Error:', e.message);
                   return batch;
                 }
               });
