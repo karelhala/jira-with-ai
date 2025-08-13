@@ -1,0 +1,30 @@
+{
+  "name": "@khala/jira-ai",
+  "version": "0.0.1",
+  "description": "JIRA with Gemini AI",
+  "main": "src/index.js",
+  "type": "module",
+  "scripts": {
+    "test": "exit 0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/karelhala/jira-with-ai.git"
+  },
+  "keywords": [
+    "jira",
+    "ai"
+  ],
+  "author": "Karel Hala",
+  "license": "Apache-2.0",
+  "bugs": {
+    "url": "https://github.com/karelhala/jira-with-ai/issues"
+  },
+  "homepage": "https://github.com/karelhala/jira-with-ai#readme",
+  "dependencies": {
+    "@google/genai": "^1.13.0",
+    "dotenv": "^17.2.1",
+    "https-proxy-agent": "^7.0.6",
+    "node-fetch": "^3.3.2"
+  }
+}
