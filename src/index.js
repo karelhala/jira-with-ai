@@ -1,5 +1,7 @@
 import dotenv from "dotenv";
-import jira from './jira.js';
+import { JiraBot } from './jira.js';
 dotenv.config();
 
-console.log('Hello world', jira());
+const jira = new JiraBot();
+
+console.log('Hello world', jira);
