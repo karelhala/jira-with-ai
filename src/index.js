@@ -25,6 +25,7 @@ import {
   handleNoEligibleIssues,
   processSelectedActions,
 } from './helpers/updateWorkflowHelpers.js';
+import { parseCommandLineArgs, displayDryRunBanner } from './helpers/dryRunUtils.js';
 import { DEFAULT_ISSUES_FILE } from './constants.js';
 
 // Action handlers
@@ -41,6 +42,9 @@ import { handleUpdateJiraWorkflow } from './actions/updateJiraWorkflow.js';
 // Load environment variables
 dotenv.config();
 
+// Parse command line arguments
+const { dryRun } = parseCommandLineArgs();
+
 // Initialize services
 const jira = new JiraBot();
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
@@ -49,8 +53,9 @@ const gemini = new GeminiBot(GEMINI_API_KEY, 'gemini-2.5-flash');
 /**
  * Handle post-generation update workflow
  * @param {Array} processedIssues - Issues with AI modifications
+ * @param {boolean} dryRun - Whether to run in dry run mode
  */
-async function handleUpdateWorkflow(processedIssues) {
+async function handleUpdateWorkflow(processedIssues, dryRun = false) {
   // Display initial status
   displayWorkflowStatus(processedIssues.length, DEFAULT_ISSUES_FILE);
 
@@ -85,15 +90,16 @@ async function handleUpdateWorkflow(processedIssues) {
   }
 
   // Process the selected actions
-  await processSelectedActions(selectedActions, eligibleIssues, jira);
+  await processSelectedActions(selectedActions, eligibleIssues, jira, dryRun);
 }
 
 /**
  * Process issues with AI based on user selection
  * @param {Array} issues - JIRA issues to process
  * @param {Object} gemini - Gemini bot instance
+ * @param {boolean} dryRun - Whether to run in dry run mode
  */
-async function processIssuesWithAI(issues, gemini) {
+async function processIssuesWithAI(issues, gemini, dryRun = false) {
   const action = await select({
     message: '\n🤖 What would you like to do with these issues?',
     choices: ACTION_CHOICES,
@@ -145,7 +151,7 @@ async function processIssuesWithAI(issues, gemini) {
   displayCompletion(processedIssues.length);
 
   // Offer update workflow
-  await handleUpdateWorkflow(processedIssues);
+  await handleUpdateWorkflow(processedIssues, dryRun);
 }
 
 /**
@@ -153,6 +159,11 @@ async function processIssuesWithAI(issues, gemini) {
  */
 async function runInteractiveCLI() {
   displayWelcome();
+
+  // Display dry run banner if enabled
+  if (dryRun) {
+    displayDryRunBanner();
+  }
 
   try {
     // Get search type and query from user
@@ -168,7 +179,7 @@ async function runInteractiveCLI() {
 
     // Process results with AI if available
     if (GEMINI_API_KEY && results.issues.length > 0) {
-      await processIssuesWithAI(results.issues, gemini);
+      await processIssuesWithAI(results.issues, gemini, dryRun);
     }
   } catch (error) {
     displayError(error.message);

@@ -3,34 +3,46 @@ import { handleUpdateJiraWorkType } from '../actions/updateJiraWorkType.js';
 import { handleUpdateJiraEdit } from '../actions/updateJiraEdit.js';
 import { handleUpdateJiraStoryPoints } from '../actions/updateJiraStoryPoints.js';
 import { handleUpdateJiraWorkflow } from '../actions/updateJiraWorkflow.js';
+import { simulateJiraUpdates, saveDryRunResults } from './dryRunUtils.js';
 import { DEFAULT_ISSUES_FILE } from '../constants.js';
 
 /**
  * Create action processors mapping for different update types
+ * @param {boolean} dryRun - Whether to run in dry run mode
  * @returns {Object} Action processors mapping
  */
-export function createActionProcessors() {
+export function createActionProcessors(dryRun = false) {
   return {
     'work-type': async (actionIssues, jira) => {
       // For work-type, offer to update JIRA directly
       const updateJira = await confirm({
-        message: `🔄 Update JIRA work type field for these ${actionIssues.length} issues?`,
+        message: `🔄 ${dryRun ? '[DRY RUN] Simulate updating' : 'Update'} JIRA work type field for these ${actionIssues.length} issues?`,
         default: true,
       });
 
       if (updateJira) {
-        await handleUpdateJiraWorkType(actionIssues, jira);
+        if (dryRun) {
+          simulateJiraUpdates(actionIssues, 'work-type');
+          saveDryRunResults(actionIssues, 'work-type');
+        } else {
+          await handleUpdateJiraWorkType(actionIssues, jira);
+        }
       }
     },
     edit: async (actionIssues, jira) => {
       // For edits, offer to update JIRA directly
       const updateJira = await confirm({
-        message: `🔄 Apply AI edits to these ${actionIssues.length} issues in JIRA?`,
+        message: `🔄 ${dryRun ? '[DRY RUN] Simulate applying' : 'Apply'} AI edits to these ${actionIssues.length} issues in JIRA?`,
         default: false,
       });
 
       if (updateJira) {
-        await handleUpdateJiraEdit(actionIssues, jira);
+        if (dryRun) {
+          simulateJiraUpdates(actionIssues, 'edit');
+          saveDryRunResults(actionIssues, 'edit');
+        } else {
+          await handleUpdateJiraEdit(actionIssues, jira);
+        }
       } else {
         console.log(`   💡 Review AI edits in ${DEFAULT_ISSUES_FILE}`);
       }
@@ -38,12 +50,17 @@ export function createActionProcessors() {
     'story-points': async (actionIssues, jira) => {
       // For story points, offer to update JIRA directly
       const updateJira = await confirm({
-        message: `🔄 Update story points for these ${actionIssues.length} issues in JIRA?`,
+        message: `🔄 ${dryRun ? '[DRY RUN] Simulate updating' : 'Update'} story points for these ${actionIssues.length} issues in JIRA?`,
         default: false,
       });
 
       if (updateJira) {
-        await handleUpdateJiraStoryPoints(actionIssues, jira);
+        if (dryRun) {
+          simulateJiraUpdates(actionIssues, 'story-points');
+          saveDryRunResults(actionIssues, 'story-points');
+        } else {
+          await handleUpdateJiraStoryPoints(actionIssues, jira);
+        }
       } else {
         console.log(`   💡 Review story point estimates in ${DEFAULT_ISSUES_FILE}`);
       }
@@ -51,12 +68,17 @@ export function createActionProcessors() {
     workflow: async (actionIssues, jira) => {
       // For workflow, offer to update JIRA directly
       const updateJira = await confirm({
-        message: `🔄 Apply workflow transitions for these ${actionIssues.length} issues in JIRA?`,
+        message: `🔄 ${dryRun ? '[DRY RUN] Simulate applying' : 'Apply'} workflow transitions for these ${actionIssues.length} issues in JIRA?`,
         default: false,
       });
 
       if (updateJira) {
-        await handleUpdateJiraWorkflow(actionIssues, jira);
+        if (dryRun) {
+          simulateJiraUpdates(actionIssues, 'workflow');
+          saveDryRunResults(actionIssues, 'workflow');
+        } else {
+          await handleUpdateJiraWorkflow(actionIssues, jira);
+        }
       } else {
         console.log(`   💡 Review workflow recommendations in ${DEFAULT_ISSUES_FILE}`);
       }
@@ -69,9 +91,15 @@ export function createActionProcessors() {
  * @param {Array} selectedActions - Actions selected by user
  * @param {Object} eligibleIssues - Issues grouped by action type
  * @param {Object} jira - JIRA bot instance
+ * @param {boolean} dryRun - Whether to run in dry run mode
  */
-export async function processSelectedActions(selectedActions, eligibleIssues, jira) {
-  const actionProcessors = createActionProcessors();
+export async function processSelectedActions(
+  selectedActions,
+  eligibleIssues,
+  jira,
+  dryRun = false
+) {
+  const actionProcessors = createActionProcessors(dryRun);
 
   // Process each selected action
   for (const action of selectedActions) {
@@ -88,7 +116,7 @@ export async function processSelectedActions(selectedActions, eligibleIssues, ji
     }
   }
 
-  console.log('\n🎉 Update workflow completed!');
+  console.log(`\n🎉 ${dryRun ? '[DRY RUN] ' : ''}Update workflow completed!`);
 }
 
 /**

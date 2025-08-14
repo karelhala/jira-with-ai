@@ -50,6 +50,22 @@ Run the interactive CLI:
 npx jira-gemini
 ```
 
+### 🔍 Dry Run Mode
+
+Test the application without making actual changes to JIRA:
+```bash
+npx jira-gemini --dry-run
+# or
+npx jira-gemini -d
+```
+
+In dry run mode:
+- **No JIRA updates**: All JIRA operations are simulated
+- **Clear indication**: All prompts and messages show `[DRY RUN]` prefix
+- **Full workflow**: Complete AI processing and confidence-based selection
+- **Simulated results**: Issues saved to `static/success.json` as if updates succeeded
+- **Safe testing**: Perfect for validating AI suggestions before applying changes
+
 ### Search Options
 - **JQL Query**: Use JIRA Query Language for advanced searches
 - **Filter ID**: Use saved JIRA filter by ID
@@ -114,6 +130,7 @@ npm run lint:fix  # Fix linting and formatting issues
 - **Console**: Real-time progress and results
 - **static/issues.json**: Processed issues with AI enhancements
 - **static/success_issues.json**: Successfully updated issues (moved from issues.json after JIRA updates)
+- **static/success.json**: Dry run results with simulated successful updates (dry run mode only)
 - **static/raw_*_*.txt**: Debug files with raw AI responses
 
 ## 🤝 Contributing
