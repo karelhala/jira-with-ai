@@ -77,21 +77,19 @@ In dry run mode:
 - **Workflow**: Get recommendations for issue transitions
 - **Work Type Classification**: Categorize issues by work type with confidence percentages
 
-### 🔄 JIRA Update Actions
-- **Update JIRA Work Types**: Apply AI work type classifications directly to JIRA custom fields
-- **Update JIRA Edits**: Apply AI-suggested edits (summary, description) directly to JIRA issues
-- **Update JIRA Story Points**: Update story points field in JIRA with AI estimates
-- **Update JIRA Workflow**: Apply AI-recommended workflow transitions in JIRA
+### 🎯 Confidence-Based JIRA Updates
 
-### 🎯 Confidence-Based Updates
-
-After AI processing, the application offers a smart update workflow:
+After AI processing, the application offers a smart update workflow where you can selectively apply changes to JIRA:
 
 1. **📊 Review Results**: All AI enhancements saved to `static/issues.json`
 2. **🎚️ Set Confidence Threshold**: Choose minimum confidence level (default: 85%)
 3. **🔍 Filter Eligible Issues**: Only issues meeting the threshold are shown
-4. **☑️ Select Actions**: Choose which types of updates to apply
-5. **🚀 Apply Updates**: Selectively update JIRA or review recommendations
+4. **☑️ Select Update Types**: Choose which AI-generated changes to apply:
+   - **Work Type Classifications** → Update JIRA custom fields
+   - **AI Edits** → Apply summary/description changes
+   - **Story Points** → Update story points field
+   - **Workflow Transitions** → Apply state changes
+5. **🚀 Apply to JIRA**: Selectively update JIRA with high-confidence AI suggestions
 
 **Confidence Levels:**
 - **95%**: Very High Confidence (Most Restrictive)

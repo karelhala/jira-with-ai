@@ -42,26 +42,6 @@ export const ACTION_CHOICES = [
     description: 'Classify issues by work type categories',
   },
   {
-    name: 'Update JIRA Work Types',
-    value: 'update-jira-work-type',
-    description: 'Update work type custom field in JIRA for classified issues',
-  },
-  {
-    name: 'Update JIRA Edits',
-    value: 'update-jira-edit',
-    description: 'Apply AI-suggested edits directly to JIRA issues',
-  },
-  {
-    name: 'Update JIRA Story Points',
-    value: 'update-jira-story-points',
-    description: 'Update story points field in JIRA with AI estimates',
-  },
-  {
-    name: 'Update JIRA Workflow',
-    value: 'update-jira-workflow',
-    description: 'Apply AI-recommended workflow transitions in JIRA',
-  },
-  {
     name: 'Skip',
     value: 'skip',
     description: 'Do nothing and exit',

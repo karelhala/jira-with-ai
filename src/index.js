@@ -34,10 +34,6 @@ import { handleAnalyzeIssues } from './actions/analyzeIssues.js';
 import { handleStoryPoints } from './actions/storyPoints.js';
 import { handleWorkflow } from './actions/workflow.js';
 import { handleWorkType } from './actions/workType.js';
-import { handleUpdateJiraWorkType } from './actions/updateJiraWorkType.js';
-import { handleUpdateJiraEdit } from './actions/updateJiraEdit.js';
-import { handleUpdateJiraStoryPoints } from './actions/updateJiraStoryPoints.js';
-import { handleUpdateJiraWorkflow } from './actions/updateJiraWorkflow.js';
 
 // Load environment variables
 dotenv.config();
@@ -117,34 +113,12 @@ async function processIssuesWithAI(issues, gemini, dryRun = false) {
     'story-points': () => handleStoryPoints(issues, gemini),
     workflow: () => handleWorkflow(issues, gemini),
     'work-type': () => handleWorkType(issues, gemini),
-    'update-jira-work-type': async () => {
-      await handleUpdateJiraWorkType(issues, jira);
-      return null; // Special case: updates JIRA directly, doesn't return modified issues
-    },
-    'update-jira-edit': async () => {
-      await handleUpdateJiraEdit(issues, jira);
-      return null; // Special case: updates JIRA directly, doesn't return modified issues
-    },
-    'update-jira-story-points': async () => {
-      await handleUpdateJiraStoryPoints(issues, jira);
-      return null; // Special case: updates JIRA directly, doesn't return modified issues
-    },
-    'update-jira-workflow': async () => {
-      await handleUpdateJiraWorkflow(issues, jira);
-      return null; // Special case: updates JIRA directly, doesn't return modified issues
-    },
   };
 
   const processedIssues = await actionHandlers[action]();
 
   // Early return for actions that don't modify/return issues
-  const jiraUpdateActions = [
-    'update-jira-work-type',
-    'update-jira-edit',
-    'update-jira-story-points',
-    'update-jira-workflow',
-  ];
-  if (action === 'analysis' || jiraUpdateActions.includes(action)) return;
+  if (action === 'analysis') return;
 
   // Save processed issues
   saveIssues(processedIssues);
