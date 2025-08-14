@@ -61,6 +61,29 @@ npx jira-gemini
 - **Workflow**: Get recommendations for issue transitions
 - **Work Type Classification**: Categorize issues by work type with confidence percentages
 
+### 🔄 JIRA Update Actions
+- **Update JIRA Work Types**: Apply AI work type classifications directly to JIRA custom fields
+- **Update JIRA Edits**: Apply AI-suggested edits (summary, description) directly to JIRA issues
+- **Update JIRA Story Points**: Update story points field in JIRA with AI estimates
+- **Update JIRA Workflow**: Apply AI-recommended workflow transitions in JIRA
+
+### 🎯 Confidence-Based Updates
+
+After AI processing, the application offers a smart update workflow:
+
+1. **📊 Review Results**: All AI enhancements saved to `static/issues.json`
+2. **🎚️ Set Confidence Threshold**: Choose minimum confidence level (default: 85%)
+3. **🔍 Filter Eligible Issues**: Only issues meeting the threshold are shown
+4. **☑️ Select Actions**: Choose which types of updates to apply
+5. **🚀 Apply Updates**: Selectively update JIRA or review recommendations
+
+**Confidence Levels:**
+- **95%**: Very High Confidence (Most Restrictive)
+- **85%**: High Confidence (Default)
+- **75%**: Medium-High Confidence  
+- **65%**: Medium Confidence
+- **50%**: Any Confidence (Least Restrictive)
+
 ## 📊 Work Type Categories
 
 - **Associate well being**: Engineer's well being

@@ -47,6 +47,21 @@ export const ACTION_CHOICES = [
     description: 'Update work type custom field in JIRA for classified issues',
   },
   {
+    name: 'Update JIRA Edits',
+    value: 'update-jira-edit',
+    description: 'Apply AI-suggested edits directly to JIRA issues',
+  },
+  {
+    name: 'Update JIRA Story Points',
+    value: 'update-jira-story-points',
+    description: 'Update story points field in JIRA with AI estimates',
+  },
+  {
+    name: 'Update JIRA Workflow',
+    value: 'update-jira-workflow',
+    description: 'Apply AI-recommended workflow transitions in JIRA',
+  },
+  {
     name: 'Skip',
     value: 'skip',
     description: 'Do nothing and exit',
@@ -87,4 +102,51 @@ export function validateFilterId(input) {
  */
 export function validateEditInstructions(input) {
   return input.trim() ? true : 'Instructions cannot be empty';
+}
+
+/**
+ * Confidence threshold choices for issue updates
+ */
+export const CONFIDENCE_THRESHOLD_CHOICES = [
+  {
+    name: '95% - Very High Confidence (Most Restrictive)',
+    value: 95,
+    description: 'Only update issues with very high confidence ratings',
+  },
+  {
+    name: '85% - High Confidence (Default)',
+    value: 85,
+    description: 'Update issues with high confidence ratings',
+  },
+  {
+    name: '75% - Medium-High Confidence',
+    value: 75,
+    description: 'Update issues with medium-high confidence ratings',
+  },
+  {
+    name: '65% - Medium Confidence',
+    value: 65,
+    description: 'Update issues with medium confidence ratings',
+  },
+  {
+    name: '50% - Any Confidence (Least Restrictive)',
+    value: 50,
+    description: 'Update all issues regardless of confidence level',
+  },
+];
+
+/**
+ * Validation function for confidence threshold
+ * @param {string} input - User input
+ * @returns {boolean|string} True if valid, error message if invalid
+ */
+export function validateConfidenceThreshold(input) {
+  const num = parseInt(input.trim());
+  if (isNaN(num)) {
+    return 'Confidence threshold must be a number';
+  }
+  if (num < 1 || num > 100) {
+    return 'Confidence threshold must be between 1 and 100';
+  }
+  return true;
 }
