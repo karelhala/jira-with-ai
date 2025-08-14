@@ -1,10 +1,10 @@
 #!/usr/bin/env node
 
 import dotenv from 'dotenv';
-import { select, confirm, checkbox } from '@inquirer/prompts';
+import { select } from '@inquirer/prompts';
 import { JiraBot } from './jira.js';
 import { GeminiBot } from './gemini.js';
-import { ACTION_CHOICES, CONFIDENCE_THRESHOLD_CHOICES } from './cli/prompts.js';
+import { ACTION_CHOICES } from './cli/prompts.js';
 import {
   displayWelcome,
   displaySearchResults,
@@ -14,6 +14,17 @@ import {
 import { getSearchInput } from './cli/input.js';
 import { saveIssues } from './helpers/fileOperations.js';
 import { filterIssuesByConfidence } from './helpers/confidenceUtils.js';
+import {
+  confirmUpdateWorkflow,
+  getConfidenceThreshold,
+  displayEligibleIssuesSummary,
+  selectActionsToProcess,
+} from './cli/updateWorkflow.js';
+import {
+  displayWorkflowStatus,
+  handleNoEligibleIssues,
+  processSelectedActions,
+} from './helpers/updateWorkflowHelpers.js';
 import { DEFAULT_ISSUES_FILE } from './constants.js';
 
 // Action handlers
@@ -40,140 +51,41 @@ const gemini = new GeminiBot(GEMINI_API_KEY, 'gemini-2.5-flash');
  * @param {Array} processedIssues - Issues with AI modifications
  */
 async function handleUpdateWorkflow(processedIssues) {
-  console.log(`\n📊 Generated ${processedIssues.length} issues with AI enhancements.`);
-  console.log(`💾 Results saved to ${DEFAULT_ISSUES_FILE}`);
+  // Display initial status
+  displayWorkflowStatus(processedIssues.length, DEFAULT_ISSUES_FILE);
 
-  const shouldUpdate = await confirm({
-    message: '\n🚀 Would you like to selectively update issues based on confidence levels?',
-    default: false,
-  });
-
+  // Ask if user wants to proceed with confidence-based updates
+  const shouldUpdate = await confirmUpdateWorkflow();
   if (!shouldUpdate) {
     console.log('\n✅ Workflow completed. Review your results in the static folder.');
     return;
   }
 
-  // Get confidence threshold
-  const thresholdChoice = await select({
-    message: '\n📊 Select minimum confidence threshold for updates:',
-    choices: CONFIDENCE_THRESHOLD_CHOICES,
-    default: 85,
-  });
+  // Get confidence threshold from user
+  const thresholdChoice = await getConfidenceThreshold();
 
-  // Filter eligible issues
+  // Filter issues by confidence threshold
   const eligibleIssues = filterIssuesByConfidence(processedIssues, thresholdChoice);
   const totalEligible = Object.values(eligibleIssues).reduce((sum, arr) => sum + arr.length, 0);
 
+  // Handle case when no issues meet threshold
   if (totalEligible === 0) {
-    console.log(`\n⚠️ No issues meet the ${thresholdChoice}% confidence threshold.`);
-    console.log('💡 Try lowering the threshold or review issues manually.');
+    handleNoEligibleIssues(thresholdChoice);
     return;
   }
 
   // Display summary of eligible issues
-  console.log(
-    `\n📈 Found ${totalEligible} issues meeting ${thresholdChoice}% confidence threshold:`
-  );
-  Object.entries(eligibleIssues).forEach(([action, issues]) => {
-    if (issues.length > 0) {
-      console.log(`   • ${action}: ${issues.length} issues`);
-    }
-  });
+  displayEligibleIssuesSummary(eligibleIssues, thresholdChoice);
 
-  // Allow user to select which action types to process
-  const availableActions = Object.entries(eligibleIssues)
-    .filter(([_, issues]) => issues.length > 0)
-    .map(([action, issues]) => ({
-      name: `${action} (${issues.length} issues)`,
-      value: action,
-      checked: action === 'work-type', // Default to work-type since it can update JIRA
-    }));
-
-  if (availableActions.length === 0) {
-    console.log('\n⚠️ No actions available for the selected threshold.');
-    return;
-  }
-
-  const selectedActions = await checkbox({
-    message: '\n🎯 Select which types of updates to apply:',
-    choices: availableActions,
-  });
-
+  // Let user select which action types to process
+  const selectedActions = await selectActionsToProcess(eligibleIssues);
   if (selectedActions.length === 0) {
     console.log('\n✅ No actions selected. Workflow completed.');
     return;
   }
 
-  // Action processors mapping
-  const actionProcessors = {
-    'work-type': async (actionIssues, jira) => {
-      // For work-type, offer to update JIRA directly
-      const updateJira = await confirm({
-        message: `🔄 Update JIRA work type field for these ${actionIssues.length} issues?`,
-        default: true,
-      });
-
-      if (updateJira) {
-        await handleUpdateJiraWorkType(actionIssues, jira);
-      }
-    },
-    edit: async (actionIssues, jira) => {
-      // For edits, offer to update JIRA directly
-      const updateJira = await confirm({
-        message: `🔄 Apply AI edits to these ${actionIssues.length} issues in JIRA?`,
-        default: false,
-      });
-
-      if (updateJira) {
-        await handleUpdateJiraEdit(actionIssues, jira);
-      } else {
-        console.log(`   💡 Review AI edits in ${DEFAULT_ISSUES_FILE}`);
-      }
-    },
-    'story-points': async (actionIssues, jira) => {
-      // For story points, offer to update JIRA directly
-      const updateJira = await confirm({
-        message: `🔄 Update story points for these ${actionIssues.length} issues in JIRA?`,
-        default: false,
-      });
-
-      if (updateJira) {
-        await handleUpdateJiraStoryPoints(actionIssues, jira);
-      } else {
-        console.log(`   💡 Review story point estimates in ${DEFAULT_ISSUES_FILE}`);
-      }
-    },
-    workflow: async (actionIssues, jira) => {
-      // For workflow, offer to update JIRA directly
-      const updateJira = await confirm({
-        message: `🔄 Apply workflow transitions for these ${actionIssues.length} issues in JIRA?`,
-        default: false,
-      });
-
-      if (updateJira) {
-        await handleUpdateJiraWorkflow(actionIssues, jira);
-      } else {
-        console.log(`   💡 Review workflow recommendations in ${DEFAULT_ISSUES_FILE}`);
-      }
-    },
-  };
-
-  // Process selected actions
-  for (const action of selectedActions) {
-    const actionIssues = eligibleIssues[action];
-    console.log(`\n🔄 Processing ${action} for ${actionIssues.length} issues...`);
-
-    const processor = actionProcessors[action];
-    if (processor) {
-      await processor(actionIssues, jira);
-    } else {
-      // For other actions, just show summary
-      console.log(`   ✅ ${actionIssues.length} issues ready for ${action} updates`);
-      console.log(`   💡 Review detailed changes in ${DEFAULT_ISSUES_FILE}`);
-    }
-  }
-
-  console.log('\n🎉 Update workflow completed!');
+  // Process the selected actions
+  await processSelectedActions(selectedActions, eligibleIssues, jira);
 }
 
 /**
