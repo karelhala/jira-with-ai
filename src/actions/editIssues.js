@@ -14,7 +14,7 @@ import { displayAiResponse } from '../cli/display.js';
 export async function handleEditIssues(issues, gemini) {
   const editInstructions = await input({
     message: 'Enter instructions for editing the issues:',
-    validate: validateEditInstructions
+    validate: validateEditInstructions,
   });
 
   return await processBatches(issues, async (batch, batchNumber) => {
@@ -31,10 +31,10 @@ ${JSON.stringify(sanitizedBatch, null, 2)}`;
 
     const response = await gemini.generateText(prompt);
     displayAiResponse(response, '📝 AI Response for this batch');
-    
+
     // Save raw response for debugging
     saveRawResponse(response, batchNumber, 'edit');
-    
+
     try {
       // Clean and parse the response as JSON
       const cleanedResponse = cleanGeminiResponse(response);

@@ -24,10 +24,10 @@ ${JSON.stringify(sanitizedBatch, null, 2)}`;
 
     const response = await gemini.generateText(prompt);
     displayAiResponse(response, '🔄 Workflow Recommendations for this batch');
-    
+
     // Save raw response for debugging
     saveRawResponse(response, batchNumber, 'workflow');
-    
+
     try {
       const cleanedResponse = cleanGeminiResponse(response);
       const updatedIssues = JSON.parse(cleanedResponse);

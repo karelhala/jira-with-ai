@@ -81,9 +81,9 @@ npm install
 # Run locally
 npm start
 
-# Lint code
-npm run lint
-npm run lint:fix
+# Lint and format code
+npm run lint      # Check for issues
+npm run lint:fix  # Fix linting and formatting issues
 ```
 
 ## 📝 Output

@@ -6,46 +6,46 @@ export const SEARCH_TYPE_CHOICES = [
   {
     name: 'JQL (JIRA Query Language)',
     value: 'jql',
-    description: 'Use JQL syntax for advanced queries'
+    description: 'Use JQL syntax for advanced queries',
   },
   {
     name: 'Filter ID',
     value: 'filter',
-    description: 'Search using a saved JIRA filter ID'
-  }
+    description: 'Search using a saved JIRA filter ID',
+  },
 ];
 
 export const ACTION_CHOICES = [
   {
     name: 'Edit Issues',
     value: 'edit',
-    description: 'Provide instructions to modify issues using AI'
+    description: 'Provide instructions to modify issues using AI',
   },
   {
     name: 'Analysis',
     value: 'analysis',
-    description: 'Get AI analysis and insights about the issues'
+    description: 'Get AI analysis and insights about the issues',
   },
   {
     name: 'Count Story Points',
     value: 'story-points',
-    description: 'Calculate and analyze story points using AI'
+    description: 'Calculate and analyze story points using AI',
   },
   {
     name: 'Transition in Workflow',
     value: 'workflow',
-    description: 'Get AI recommendations for workflow transitions'
+    description: 'Get AI recommendations for workflow transitions',
   },
   {
     name: 'Classify Work Type',
     value: 'work-type',
-    description: 'Classify issues by work type categories'
+    description: 'Classify issues by work type categories',
   },
   {
     name: 'Skip',
     value: 'skip',
-    description: 'Do nothing and exit'
-  }
+    description: 'Do nothing and exit',
+  },
 ];
 
 /**

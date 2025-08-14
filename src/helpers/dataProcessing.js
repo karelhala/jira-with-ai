@@ -13,21 +13,25 @@ export function streamlineIssues(issues) {
     fields: {
       summary: issue.fields.summary,
       description: issue.fields.description,
-      priority: issue.fields.priority ? {
-        name: issue.fields.priority.name
-      } : null,
-      issuetype: issue.fields.issuetype ? {
-        name: issue.fields.issuetype.name
-      } : null,
+      priority: issue.fields.priority
+        ? {
+            name: issue.fields.priority.name,
+          }
+        : null,
+      issuetype: issue.fields.issuetype
+        ? {
+            name: issue.fields.issuetype.name,
+          }
+        : null,
       created: issue.fields.created,
       updated: issue.fields.updated,
       // Keep any custom fields that might be important
       ...Object.fromEntries(
-        Object.entries(issue.fields).filter(([key]) => 
-          key.startsWith('customfield_') || key === 'labels' || key === 'components'
+        Object.entries(issue.fields).filter(
+          ([key]) => key.startsWith('customfield_') || key === 'labels' || key === 'components'
         )
-      )
-    }
+      ),
+    },
   }));
 }
 
@@ -38,7 +42,7 @@ export function streamlineIssues(issues) {
  */
 export function sanitizeIssues(issues) {
   const sanitizedIssues = JSON.parse(JSON.stringify(issues)); // Deep clone
-  
+
   function replaceBackticks(obj) {
     if (typeof obj === 'string') {
       return obj.replace(/`/g, "'");
@@ -53,7 +57,7 @@ export function sanitizeIssues(issues) {
     }
     return obj;
   }
-  
+
   return replaceBackticks(sanitizedIssues);
 }
 
@@ -66,27 +70,27 @@ export function cleanGeminiResponse(response) {
   if (typeof response !== 'string') {
     return response;
   }
-  
+
   let cleaned = response.trim();
-  
+
   // Find the first occurrence of ```json and remove everything before it
   const jsonStartIndex = cleaned.indexOf('```json');
   if (jsonStartIndex !== -1) {
     cleaned = cleaned.substring(jsonStartIndex);
   }
-  
+
   // Check for various markdown code block patterns
   if (cleaned.startsWith('```json')) {
     cleaned = cleaned.replace(/^```json\s*/, '');
   } else if (cleaned.startsWith('```')) {
     cleaned = cleaned.replace(/^```\s*/, '');
   }
-  
+
   // Remove ending ``` marker
   if (cleaned.endsWith('```')) {
     cleaned = cleaned.replace(/\s*```$/, '');
   }
-  
+
   return cleaned.trim();
 }
 

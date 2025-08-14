@@ -1,0 +1,22 @@
+# Dependencies
+node_modules/
+
+# Build outputs
+dist/
+build/
+
+# Generated files
+*.min.js
+*.bundle.js
+
+# Package files
+package-lock.json
+
+# Logs
+*.log
+
+# Raw response files
+raw_*.txt
+
+# Output files
+issues.json

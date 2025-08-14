@@ -8,18 +8,18 @@ import { BATCH_SIZE } from '../constants.js';
  */
 export async function processBatches(issues, processor) {
   const results = [];
-  
+
   for (let i = 0; i < issues.length; i += BATCH_SIZE) {
     const batch = issues.slice(i, i + BATCH_SIZE);
     const batchNumber = Math.floor(i / BATCH_SIZE) + 1;
     const totalBatches = Math.ceil(issues.length / BATCH_SIZE);
-    
+
     console.log(`\n🔄 Processing batch ${batchNumber}/${totalBatches} (${batch.length} issues)...`);
-    
+
     try {
       const batchResult = await processor(batch, batchNumber);
       results.push(...batchResult);
-      
+
       console.log(`✅ Batch ${batchNumber} completed`);
     } catch (error) {
       console.error(`❌ Error processing batch ${batchNumber}:`, error.message);
@@ -27,6 +27,6 @@ export async function processBatches(issues, processor) {
       results.push(...batch); // Add unchanged issues
     }
   }
-  
+
   return results;
 }

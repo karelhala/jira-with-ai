@@ -20,16 +20,18 @@ export function displaySearchResults(results) {
   }
 
   console.log(`\n✅ Found ${results.issues.length} issue(s):\n`);
-  
+
   results.issues.forEach((issue, index) => {
     console.log(`${index + 1}. ${issue.key}: ${issue.fields.summary}`);
     console.log(`   Status: ${issue.fields.status.name}`);
     console.log(`   Priority: ${issue.fields.priority ? issue.fields.priority.name : 'None'}`);
-    console.log(`   Assignee: ${issue.fields.assignee ? issue.fields.assignee.displayName : 'Unassigned'}`);
+    console.log(
+      `   Assignee: ${issue.fields.assignee ? issue.fields.assignee.displayName : 'Unassigned'}`
+    );
     console.log(`   Created: ${new Date(issue.fields.created).toLocaleDateString()}`);
     console.log('');
   });
-  
+
   console.log(`Total: ${results.total} issues (showing all ${results.issues.length})`);
   return true;
 }
