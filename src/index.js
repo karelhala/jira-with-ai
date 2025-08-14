@@ -1,3 +1,5 @@
+#!/usr/bin/env node
+
 import dotenv from "dotenv";
 import { select, input } from '@inquirer/prompts';
 import { JiraBot } from './jira.js';
