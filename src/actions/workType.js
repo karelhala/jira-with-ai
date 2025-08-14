@@ -15,7 +15,7 @@ export async function handleWorkType(issues, gemini) {
     const sanitizedBatch = prepareIssuesForGemini(batch);
     const workTypesDescription = WORK_TYPES.map(wt => `- ${wt.name}: ${wt.description}`).join('\n');
 
-    const prompt = `Analyze these JIRA issues and classify each one into the most appropriate work type category based on the issue's summary and priority.
+    const prompt = `Analyze these JIRA issues and classify each one into the most appropriate work type category based on the issue's summary, issue type, and priority.
 
 Available work type categories:
 ${workTypesDescription}
@@ -25,7 +25,7 @@ For each issue, analyze the content and assign the most fitting work type. Add a
   "category": "work-type-value",
   "categoryName": "Work Type Name",
   "confidence": "85%",
-  "reasoning": "Brief explanation of why this category was chosen"
+  "reasoning": "Brief explanation of why this category was chosen based on issue type, summary, and priority"
 }
 
 Note: Use percentage values for confidence (e.g., "95%", "80%", "65%") based on how certain you are about the classification.

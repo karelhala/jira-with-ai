@@ -37,6 +37,7 @@ export function JiraBot() {
   this.baseUrl = baseUrl;
   this.fetcher = fetcher;
   this.proxyAgent = proxyAgent;
+  this.wtType = '12320040';
 }
 
 // Utility function to replace URL parameters
@@ -60,7 +61,7 @@ JiraBot.prototype.search = async function (query, type = 'jql') {
   }
 
   // Add additional useful parameters
-  baseSearchParams.fields = 'key,summary,status,assignee,priority,created,updated';
+  baseSearchParams.fields = 'key,summary,status,priority,issuetype,created,updated';
 
   console.log(`\nSearching JIRA with ${type}: ${query}`);
   console.log('🔄 Fetching all results (this may take a moment for large result sets)...');
@@ -125,3 +126,5 @@ JiraBot.prototype.search = async function (query, type = 'jql') {
     throw error;
   }
 };
+
+// JiraBot.prototype.updateWorkType = async function (issues) {};

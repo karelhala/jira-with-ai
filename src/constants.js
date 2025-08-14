@@ -8,7 +8,8 @@ export const WORK_TYPES = [
   {
     name: 'Future sustainability',
     value: 'future-sustainability',
-    description: 'Work associated for better future work',
+    description:
+      'Work associated with sustainability of the product, core functionality, and long-term health.',
   },
   {
     name: 'Incidents and support',
@@ -18,7 +19,7 @@ export const WORK_TYPES = [
   {
     name: 'Quality / Stability / Reliability',
     value: 'quality-stability',
-    description: 'Work associated with quality assurance',
+    description: 'Work associated with quality assurance, bug fixes, and stability.',
   },
   {
     name: 'Security and compliance',
@@ -28,7 +29,8 @@ export const WORK_TYPES = [
   {
     name: 'Product / Portfolio work',
     value: 'product-portfolio',
-    description: 'Work associated with product itself',
+    description:
+      'Work associated with product itself, including new features, enhancements, and improvements.',
   },
 ];
 
