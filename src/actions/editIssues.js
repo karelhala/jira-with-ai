@@ -25,6 +25,15 @@ Instructions:
 - Return the modified issues in the same JSON format
 - Only modify fields that need to be changed according to the instructions
 - Preserve the original structure and any unchanged fields
+- For each modification made, add an "aiEdit" field with the following structure:
+  {
+    "modified": true,
+    "confidence": "85%",
+    "changes": ["field1", "field2"],
+    "reasoning": "Brief explanation of why these changes were made"
+  }
+
+Note: Use percentage values for confidence (e.g., "95%", "80%", "65%") based on how certain you are about the modifications.
 
 Issues to edit:
 ${JSON.stringify(sanitizedBatch, null, 2)}`;
