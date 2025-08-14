@@ -24,6 +24,7 @@ import { handleAnalyzeIssues } from './actions/analyzeIssues.js';
 import { handleStoryPoints } from './actions/storyPoints.js';
 import { handleWorkflow } from './actions/workflow.js';
 import { handleWorkType } from './actions/workType.js';
+import { handleUpdateJiraWorkType } from './actions/updateJiraWorkType.js';
 
 // Load environment variables
 dotenv.config();
@@ -84,12 +85,16 @@ async function processIssuesWithAI(issues, gemini) {
     'story-points': () => handleStoryPoints(issues, gemini),
     workflow: () => handleWorkflow(issues, gemini),
     'work-type': () => handleWorkType(issues, gemini),
+    'update-jira-work-type': async () => {
+      await handleUpdateJiraWorkType(issues, jira);
+      return null; // Special case: updates JIRA directly, doesn't return modified issues
+    },
   };
 
   const processedIssues = await actionHandlers[action]();
 
-  // Early return for analysis since it doesn't modify issues
-  if (action === 'analysis') return;
+  // Early return for actions that don't modify/return issues
+  if (action === 'analysis' || action === 'update-jira-work-type') return;
 
   // Save processed issues
   saveIssues(processedIssues);

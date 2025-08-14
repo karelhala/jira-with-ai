@@ -15,8 +15,5 @@ package-lock.json
 # Logs
 *.log
 
-# Raw response files
-raw_*.txt
-
-# Output files
-issues.json
+# Debug and output files
+static/

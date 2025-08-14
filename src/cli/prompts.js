@@ -42,6 +42,11 @@ export const ACTION_CHOICES = [
     description: 'Classify issues by work type categories',
   },
   {
+    name: 'Update JIRA Work Types',
+    value: 'update-jira-work-type',
+    description: 'Update work type custom field in JIRA for classified issues',
+  },
+  {
     name: 'Skip',
     value: 'skip',
     description: 'Do nothing and exit',

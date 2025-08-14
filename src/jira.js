@@ -1,7 +1,10 @@
 import nodeFetch from 'node-fetch';
 import { HttpsProxyAgent } from 'https-proxy-agent';
+import { WORK_TYPES } from './constants.js';
 
 const SEARCH = '/rest/api/2/search';
+const UPDATE_ISSUE = '/rest/api/2/issue/';
+const WORK_TYPE_CUSTOM_FIELD = 'customfield_12320040';
 
 export function JiraBot() {
   const baseUrl = process.env.IS_PROD
@@ -27,6 +30,9 @@ export function JiraBot() {
     }).then(async data => {
       if (data.status === 200 || data.status === 201) {
         return await data.json();
+      } else if (data.status === 204) {
+        // No Content - successful update with no response body
+        return { success: true };
       } else {
         console.log(data);
         console.log(data.statusText);
@@ -37,7 +43,6 @@ export function JiraBot() {
   this.baseUrl = baseUrl;
   this.fetcher = fetcher;
   this.proxyAgent = proxyAgent;
-  this.wtType = '12320040';
 }
 
 // Utility function to replace URL parameters
@@ -127,4 +132,85 @@ JiraBot.prototype.search = async function (query, type = 'jql') {
   }
 };
 
-// JiraBot.prototype.updateWorkType = async function (issues) {};
+/**
+ * Update work type custom field for JIRA issues
+ * @param {Array} issues - Array of issues with workType classification
+ * @returns {Array} Results of update operations
+ */
+JiraBot.prototype.updateWorkType = async function (issues) {
+  const results = [];
+
+  for (const issue of issues) {
+    if (!issue.workType || !issue.workType.category) {
+      console.log(`⚠️ Skipping ${issue.key} - no work type classification`);
+      results.push({ issueKey: issue.key, status: 'skipped', reason: 'No work type' });
+      continue;
+    }
+
+    // Map Gemini's work type value to JIRA ID
+    const workType = WORK_TYPES.find(wt => wt.value === issue.workType.category);
+
+    if (!workType) {
+      console.log(`⚠️ Skipping ${issue.key} - unknown work type: ${issue.workType.category}`);
+      results.push({
+        issueKey: issue.key,
+        status: 'skipped',
+        reason: `Unknown work type: ${issue.workType.category}`,
+      });
+      continue;
+    }
+
+    try {
+      console.log(`🔄 Updating ${issue.key} with work type: ${workType.name} (ID: ${workType.id})`);
+
+      const updateUrl = `${UPDATE_ISSUE}${issue.key}`;
+      const updateData = {
+        fields: {
+          [WORK_TYPE_CUSTOM_FIELD]: {
+            id: workType.id,
+          },
+        },
+      };
+
+      const response = await this.fetcher(updateUrl, {}, 'PUT', JSON.stringify(updateData));
+
+      if (response && response.success) {
+        // JIRA returns 204 No Content for successful updates
+        console.log(`✅ Successfully updated ${issue.key}`);
+        results.push({
+          issueKey: issue.key,
+          status: 'success',
+          workType: workType.name,
+          confidence: issue.workType.confidence,
+        });
+      } else {
+        console.log(`❌ Failed to update ${issue.key}`);
+        results.push({
+          issueKey: issue.key,
+          status: 'failed',
+          reason: 'Update request failed',
+        });
+      }
+    } catch (error) {
+      console.error(`❌ Error updating ${issue.key}:`, error.message);
+      results.push({
+        issueKey: issue.key,
+        status: 'error',
+        reason: error.message,
+      });
+    }
+  }
+
+  // Summary
+  const successful = results.filter(r => r.status === 'success').length;
+  const failed = results.filter(r => r.status === 'failed' || r.status === 'error').length;
+  const skipped = results.filter(r => r.status === 'skipped').length;
+
+  console.log(`\n📊 Update Summary:`);
+  console.log(`   ✅ Successful: ${successful}`);
+  console.log(`   ❌ Failed: ${failed}`);
+  console.log(`   ⚠️ Skipped: ${skipped}`);
+  console.log(`   📋 Total: ${results.length}`);
+
+  return results;
+};

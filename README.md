@@ -89,8 +89,9 @@ npm run lint:fix  # Fix linting and formatting issues
 ## 📝 Output
 
 - **Console**: Real-time progress and results
-- **issues.json**: Processed issues with AI enhancements
-- **raw_*_*.txt**: Debug files with raw AI responses
+- **static/issues.json**: Processed issues with AI enhancements
+- **static/success_issues.json**: Successfully updated issues (moved from issues.json after JIRA updates)
+- **static/raw_*_*.txt**: Debug files with raw AI responses
 
 ## 🤝 Contributing
 
