@@ -5,7 +5,10 @@
   "main": "src/index.js",
   "type": "module",
   "scripts": {
-    "test": "exit 0"
+    "test": "exit 0",
+    "lint": "eslint src/",
+    "lint:fix": "eslint src/ --fix",
+    "start": "node src/index.js"
   },
   "repository": {
     "type": "git",
@@ -27,5 +30,10 @@
     "dotenv": "^17.2.1",
     "https-proxy-agent": "^7.0.6",
     "node-fetch": "^3.3.2"
+  },
+  "devDependencies": {
+    "@eslint/js": "^9.33.0",
+    "eslint": "^9.33.0",
+    "globals": "^16.3.0"
   }
 }

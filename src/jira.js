@@ -1,12 +1,7 @@
 import nodeFetch from 'node-fetch'
 import { HttpsProxyAgent } from 'https-proxy-agent';
 
-const LIST_PROJECTS = '/rest/api/2/project';
-const ISSUE_TYPES = `/rest/api/2/issue/createmeta/{projectIdOrKey}/issuetypes`;
-const FIELDS = '/rest/api/2/issue/createmeta/{projectIdOrKey}/issuetypes/{issueTypeId}';
-const SUGGESTIONS = '/rest/api/2/jql/autocompletedata/suggestions';
-const SEARCH = '/rest/api/2/search'
-const ISSUE = '/rest/api/2/issue/';
+const SEARCH = '/rest/api/2/search';
 
 export function JiraBot() {
   const baseUrl = process.env.IS_PROD ? 'https://issues.redhat.com' : 'https://issues.stage.redhat.com';
