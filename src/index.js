@@ -1,439 +1,135 @@
 import dotenv from "dotenv";
-import { select, input, confirm } from '@inquirer/prompts';
-import { writeFileSync } from 'fs';
+import { select, input } from '@inquirer/prompts';
 import { JiraBot } from './jira.js';
 import { GeminiBot } from './gemini.js';
+import { 
+  SEARCH_TYPE_CHOICES, 
+  ACTION_CHOICES, 
+  validateJqlQuery, 
+  validateFilterId 
+} from './cli/prompts.js';
+import { 
+  displayWelcome, 
+  displaySearchResults, 
+  displayCompletion, 
+  displayError 
+} from './cli/display.js';
+import { saveIssues } from './helpers/fileOperations.js';
 
+// Action handlers
+import { handleEditIssues } from './actions/editIssues.js';
+import { handleAnalyzeIssues } from './actions/analyzeIssues.js';
+import { handleStoryPoints } from './actions/storyPoints.js';
+import { handleWorkflow } from './actions/workflow.js';
+import { handleWorkType } from './actions/workType.js';
+
+// Load environment variables
 dotenv.config();
 
+// Initialize services
 const jira = new JiraBot();
-
-// Initialize Gemini AI with model - no need to pass model each time
 const GEMINI_API_KEY = process.env.GEMINI_API_KEY;
 const gemini = new GeminiBot(GEMINI_API_KEY, 'gemini-2.5-flash');
 
-// Work type options
-const WORK_TYPES = [
-  { name: 'Associate well being', value: 'associate-wellbeing', description: 'Work associated with engineer\'s well being' },
-  { name: 'Future sustainability', value: 'future-sustainability', description: 'Work associated for better future work' },
-  { name: 'Incidents and support', value: 'incidents-support', description: 'Work associated for outages and problems' },
-  { name: 'Quality / Stability / Reliability', value: 'quality-stability', description: 'Work associated with quality assurance' },
-  { name: 'Security and compliance', value: 'security-compliance', description: 'Work associated with making product secure and up to date' },
-  { name: 'Product / Portfolio work', value: 'product-portfolio', description: 'Work associated with product itself' }
-];
+/**
+ * Get search input from user
+ * @returns {Object} Object containing searchType and query
+ */
+async function getSearchInput() {
+  // Prompt for search type
+  const searchType = await select({
+    message: 'What type of search would you like to perform?',
+    choices: SEARCH_TYPE_CHOICES
+  });
 
-// Helper function to process issues in batches of 100
-async function processBatches(issues, processor) {
-  const batchSize = 100;
-  const results = [];
-  
-  for (let i = 0; i < issues.length; i += batchSize) {
-    const batch = issues.slice(i, i + batchSize);
-    const batchNumber = Math.floor(i / batchSize) + 1;
-    const totalBatches = Math.ceil(issues.length / batchSize);
-    
-    console.log(`\n🔄 Processing batch ${batchNumber}/${totalBatches} (${batch.length} issues)...`);
-    
-    try {
-      const batchResult = await processor(batch, batchNumber);
-      results.push(...batchResult);
-      
-      console.log(`✅ Batch ${batchNumber} completed`);
-    } catch (error) {
-      console.error(`❌ Error processing batch ${batchNumber}:`, error.message);
-      // Continue with other batches even if one fails
-      results.push(...batch); // Add unchanged issues
-    }
-  }
-  
-  return results;
-}
-
-// Strip unnecessary fields from JIRA issues to reduce payload size
-function streamlineIssues(issues) {
-  return issues.map(issue => ({
-    key: issue.key,
-    fields: {
-      summary: issue.fields.summary,
-      description: issue.fields.description,
-      priority: issue.fields.priority ? {
-        name: issue.fields.priority.name
-      } : null,
-      issuetype: issue.fields.issuetype ? {
-        name: issue.fields.issuetype.name
-      } : null,
-      created: issue.fields.created,
-      updated: issue.fields.updated,
-      // Keep any custom fields that might be important
-      ...Object.fromEntries(
-        Object.entries(issue.fields).filter(([key]) => 
-          key.startsWith('customfield_') || key === 'labels' || key === 'components'
-        )
-      )
-    }
-  }));
-}
-
-// Clean JIRA issues by replacing backticks with single quotes
-function sanitizeIssues(issues) {
-  const sanitizedIssues = JSON.parse(JSON.stringify(issues)); // Deep clone
-  
-  function replaceBackticks(obj) {
-    if (typeof obj === 'string') {
-      return obj.replace(/`/g, "'");
-    } else if (Array.isArray(obj)) {
-      return obj.map(replaceBackticks);
-    } else if (obj && typeof obj === 'object') {
-      const result = {};
-      for (const [key, value] of Object.entries(obj)) {
-        result[key] = replaceBackticks(value);
-      }
-      return result;
-    }
-    return obj;
-  }
-  
-  return replaceBackticks(sanitizedIssues);
-}
-
-// Clean Gemini response by removing markdown code block formatting and explanatory text
-function cleanGeminiResponse(response) {
-  if (typeof response !== 'string') {
-    return response;
-  }
-  
-  let cleaned = response.trim();
-  
-  // Find the first occurrence of ```json and remove everything before it
-  const jsonStartIndex = cleaned.indexOf('```json');
-  if (jsonStartIndex !== -1) {
-    cleaned = cleaned.substring(jsonStartIndex);
-  }
-  
-  // Check for various markdown code block patterns
-  if (cleaned.startsWith('```json')) {
-    cleaned = cleaned.replace(/^```json\s*/, '');
-  } else if (cleaned.startsWith('```')) {
-    cleaned = cleaned.replace(/^```\s*/, '');
-  }
-  
-  // Remove ending ``` marker
-  if (cleaned.endsWith('```')) {
-    cleaned = cleaned.replace(/\s*```$/, '');
-  }
-  
-  return cleaned.trim();
-}
-
-// Save raw Gemini response for debugging
-function saveRawResponse(response, batchNumber, action) {
-  try {
-    const filename = `raw_${action}_${batchNumber}.txt`;
-    writeFileSync(filename, response);
-    console.log(`🔍 Raw response saved to ${filename}`);
-  } catch (error) {
-    console.error(`❌ Error saving raw response: ${error.message}`);
-  }
-}
-
-// Save issues to JSON file
-function saveIssues(issues, filename = 'issues.json') {
-  try {
-    writeFileSync(filename, JSON.stringify(issues, null, 2));
-    console.log(`\n💾 Issues saved to ${filename}`);
-  } catch (error) {
-    console.error(`❌ Error saving issues: ${error.message}`);
-  }
-}
-
-async function runInteractiveCLI() {
-  console.log('🎯 Welcome to JIRA Interactive Search CLI\n');
-  
-  try {
-    // Prompt for search type
-    const searchType = await select({
-      message: 'What type of search would you like to perform?',
-      choices: [
-        {
-          name: 'JQL (JIRA Query Language)',
-          value: 'jql',
-          description: 'Use JQL syntax for advanced queries'
-        },
-        {
-          name: 'Filter ID',
-          value: 'filter',
-          description: 'Search using a saved JIRA filter ID'
-        }
-      ]
+  // Prompt for query input based on search type
+  let query;
+  if (searchType === 'jql') {
+    query = await input({
+      message: 'Enter your JQL query:',
+      validate: validateJqlQuery
     });
+  } else {
+    query = await input({
+      message: 'Enter the filter ID:',
+      validate: validateFilterId
+    });
+  }
 
-    // Prompt for query input based on search type
-    let query;
-    if (searchType === 'jql') {
-      query = await input({
-        message: 'Enter your JQL query:',
-        validate: (input) => {
-          if (!input.trim()) {
-            return 'JQL query cannot be empty';
-          }
-          return true;
-        }
-      });
-    } else {
-      query = await input({
-        message: 'Enter the filter ID:',
-        validate: (input) => {
-          if (!input.trim()) {
-            return 'Filter ID cannot be empty';
-          }
-          if (!/^\d+$/.test(input.trim())) {
-            return 'Filter ID must be a number';
-          }
-          return true;
-        }
-      });
-    }
+  return { searchType, query };
+}
 
-    console.log('\n🔍 Executing search...');
+/**
+ * Process issues with AI based on user selection
+ * @param {Array} issues - JIRA issues to process
+ * @param {Object} gemini - Gemini bot instance
+ */
+async function processIssuesWithAI(issues, gemini) {
+  const action = await select({
+    message: '\n🤖 What would you like to do with these issues?',
+    choices: ACTION_CHOICES
+  });
+
+  if (action === 'skip') return;
+
+  let processedIssues = [...issues];
+
+  switch (action) {
+    case 'edit':
+      processedIssues = await handleEditIssues(issues, gemini);
+      break;
+
+    case 'analysis':
+      await handleAnalyzeIssues(issues, gemini);
+      return; // Analysis doesn't modify issues
+
+    case 'story-points':
+      processedIssues = await handleStoryPoints(issues, gemini);
+      break;
+
+    case 'workflow':
+      processedIssues = await handleWorkflow(issues, gemini);
+      break;
+
+    case 'work-type':
+      processedIssues = await handleWorkType(issues, gemini);
+      break;
+  }
+
+  // Save processed issues (except for analysis)
+  if (action !== 'analysis') {
+    saveIssues(processedIssues);
+    displayCompletion(processedIssues.length);
+  }
+}
+
+/**
+ * Main CLI application
+ */
+async function runInteractiveCLI() {
+  displayWelcome();
+  
+  try {
+    // Get search type and query from user
+    const { searchType, query } = await getSearchInput();
     
-    // Perform the search
+    // Perform JIRA search
+    console.log('\n🔍 Executing search...');
     const results = await jira.search(query.trim(), searchType);
     
-    // Display results
-    if (results && results.issues && results.issues.length > 0) {
-      console.log(`\n✅ Found ${results.issues.length} issue(s):\n`);
-      
-      results.issues.forEach((issue, index) => {
-        console.log(`${index + 1}. ${issue.key}: ${issue.fields.summary}`);
-        console.log(`   Status: ${issue.fields.status.name}`);
-        console.log(`   Priority: ${issue.fields.priority ? issue.fields.priority.name : 'None'}`);
-        console.log(`   Assignee: ${issue.fields.assignee ? issue.fields.assignee.displayName : 'Unassigned'}`);
-        console.log(`   Created: ${new Date(issue.fields.created).toLocaleDateString()}`);
-        console.log('');
-      });
-      
-      console.log(`Total: ${results.total} issues (showing all ${results.issues.length})`);
-
-      // Ask what to do with the found issues
-      if (GEMINI_API_KEY && results.issues.length > 0) {
-        const action = await select({
-          message: '\n🤖 What would you like to do with these issues?',
-          choices: [
-            {
-              name: 'Edit Issues',
-              value: 'edit',
-              description: 'Provide instructions to modify issues using AI'
-            },
-            {
-              name: 'Analysis',
-              value: 'analysis',
-              description: 'Get AI analysis and insights about the issues'
-            },
-            {
-              name: 'Count Story Points',
-              value: 'story-points',
-              description: 'Calculate and analyze story points using AI'
-            },
-            {
-              name: 'Transition in Workflow',
-              value: 'workflow',
-              description: 'Get AI recommendations for workflow transitions'
-            },
-            {
-              name: 'Classify Work Type',
-              value: 'work-type',
-              description: 'Classify issues by work type categories'
-            },
-            {
-              name: 'Skip',
-              value: 'skip',
-              description: 'Do nothing and exit'
-            }
-          ]
-        });
-
-        if (action !== 'skip') {
-          let processedIssues = [...results.issues];
-
-          switch (action) {
-            case 'edit':
-              const editInstructions = await input({
-                message: 'Enter instructions for editing the issues:',
-                validate: (input) => input.trim() ? true : 'Instructions cannot be empty'
-              });
-
-              processedIssues = await processBatches(results.issues, async (batch, batchNumber) => {
-                const streamlinedBatch = streamlineIssues(batch);
-                const sanitizedBatch = sanitizeIssues(streamlinedBatch);
-                const prompt = `Please edit these JIRA issues according to the following instructions: ${editInstructions}
-
-Instructions:
-- Return the modified issues in the same JSON format
-- Only modify fields that need to be changed according to the instructions
-- Preserve the original structure and any unchanged fields
-
-Issues to edit:
-${JSON.stringify(sanitizedBatch, null, 2)}`;
-
-                const response = await gemini.generateText(prompt);
-                console.log('\n📝 AI Response for this batch:');
-                console.log(response.substring(0, 500) + (response.length > 500 ? '...' : ''));
-                
-                // Save raw response for debugging
-                saveRawResponse(response, batchNumber, 'edit');
-                
-                try {
-                  // Clean and parse the response as JSON
-                  const cleanedResponse = cleanGeminiResponse(response);
-                  const editedIssues = JSON.parse(cleanedResponse);
-                  return Array.isArray(editedIssues) ? editedIssues : batch;
-                } catch (e) {
-                  console.log('JSON Parse Error:', e.message);
-                  // If parsing fails, return original batch
-                  return batch;
-                }
-              });
-              break;
-
-            case 'analysis':
-              const streamlinedAnalysisIssues = streamlineIssues(results.issues.slice(0, 100));
-              const sanitizedAnalysisIssues = sanitizeIssues(streamlinedAnalysisIssues);
-              const analysisPrompt = `Analyze these JIRA issues and provide insights including:
-- Overall summary and patterns
-- Priority analysis
-- Issue type distribution
-- Common themes and recommendations
-
-Issues:
-${JSON.stringify(sanitizedAnalysisIssues, null, 2)}`;
-
-              console.log('\n🤖 Analyzing issues...');
-              const analysis = await gemini.generateText(analysisPrompt);
-              console.log('\n📊 AI Analysis:');
-              console.log(analysis);
-              break;
-
-            case 'story-points':
-              processedIssues = await processBatches(results.issues, async (batch, batchNumber) => {
-                const streamlinedBatch = streamlineIssues(batch);
-                const sanitizedBatch = sanitizeIssues(streamlinedBatch);
-                const prompt = `Analyze these JIRA issues and estimate story points for each issue. Return the issues with added/updated story point estimates in the customfield_storypoints field.
-
-Consider complexity, effort, and uncertainty when estimating. Use fibonacci sequence (1, 2, 3, 5, 8, 13, 21).
-
-Issues:
-${JSON.stringify(sanitizedBatch, null, 2)}`;
-
-                const response = await gemini.generateText(prompt);
-                console.log('\n📊 Story Points Analysis for this batch:');
-                console.log(response.substring(0, 500) + (response.length > 500 ? '...' : ''));
-                
-                // Save raw response for debugging
-                saveRawResponse(response, batchNumber, 'story-points');
-                
-                try {
-                  const cleanedResponse = cleanGeminiResponse(response);
-                  const updatedIssues = JSON.parse(cleanedResponse);
-                  return Array.isArray(updatedIssues) ? updatedIssues : batch;
-                } catch (e) {
-                  console.log('JSON Parse Error:', e.message);
-                  return batch;
-                }
-              });
-              break;
-
-            case 'workflow':
-              processedIssues = await processBatches(results.issues, async (batch, batchNumber) => {
-                const streamlinedBatch = streamlineIssues(batch);
-                const sanitizedBatch = sanitizeIssues(streamlinedBatch);
-                const prompt = `Analyze these JIRA issues and recommend appropriate workflow transitions based on their content and context. Add recommendations to each issue.
-
-Consider:
-- Issue content and completion indicators
-- Priority and type of work
-- Dependencies and blockers
-
-Issues:
-${JSON.stringify(sanitizedBatch, null, 2)}`;
-
-                const response = await gemini.generateText(prompt);
-                console.log('\n🔄 Workflow Recommendations for this batch:');
-                console.log(response.substring(0, 500) + (response.length > 500 ? '...' : ''));
-                
-                // Save raw response for debugging
-                saveRawResponse(response, batchNumber, 'workflow');
-                
-                try {
-                  const cleanedResponse = cleanGeminiResponse(response);
-                  const updatedIssues = JSON.parse(cleanedResponse);
-                  return Array.isArray(updatedIssues) ? updatedIssues : batch;
-                } catch (e) {
-                  console.log('JSON Parse Error:', e.message);
-                  return batch;
-                }
-              });
-              break;
-
-            case 'work-type':
-              processedIssues = await processBatches(results.issues, async (batch, batchNumber) => {
-                const streamlinedBatch = streamlineIssues(batch);
-                const sanitizedBatch = sanitizeIssues(streamlinedBatch);
-                const workTypesDescription = WORK_TYPES.map(wt => 
-                  `- ${wt.name}: ${wt.description}`
-                ).join('\n');
-
-                const prompt = `Analyze these JIRA issues and classify each one into the most appropriate work type category based on the issue's summary and priority.
-
-Available work type categories:
-${workTypesDescription}
-
-For each issue, analyze the content and assign the most fitting work type. Add a "workType" field with the following structure:
-{
-  "category": "work-type-value",
-  "categoryName": "Work Type Name",
-  "confidence": "high/medium/low",
-  "reasoning": "Brief explanation of why this category was chosen"
-}
-
-Return the issues in the same JSON format with the added workType field.
-
-Issues to classify:
-${JSON.stringify(sanitizedBatch, null, 2)}`;
-
-                const response = await gemini.generateText(prompt);
-                console.log('\n🏷️ AI Work Type Classification for this batch:');
-                console.log(response.substring(0, 500) + (response.length > 500 ? '...' : ''));
-                
-                // Save raw response for debugging
-                saveRawResponse(response, batchNumber, 'work-type');
-                
-                try {
-                  const cleanedResponse = cleanGeminiResponse(response);
-                  console.log('Cleaned response:', cleanedResponse.substring(0, 200) + (cleanedResponse.length > 200 ? '...' : ''));
-                  const classifiedIssues = JSON.parse(cleanedResponse);
-                  return Array.isArray(classifiedIssues) ? classifiedIssues : batch;
-                } catch (e) {
-                  console.log('JSON Parse Error:', e.message);
-                  return batch;
-                }
-              });
-              break;
-          }
-
-          // Save processed issues
-          saveIssues(processedIssues);
-          console.log(`\n🎉 Processing complete! ${processedIssues.length} issues processed.`);
-        }
-      }
-
-    } else {
-      console.log('\n❌ No issues found or search failed.');
+    // Display search results
+    const hasResults = displaySearchResults(results);
+    if (!hasResults) return;
+    
+    // Process results with AI if available
+    if (GEMINI_API_KEY && results.issues.length > 0) {
+      await processIssuesWithAI(results.issues, gemini);
     }
     
   } catch (error) {
-    console.error('\n❌ Error occurred:', error.message);
+    displayError(error.message);
   }
 }
 
-// Run the interactive CLI
+// Run the interactive CLI application
 runInteractiveCLI();
