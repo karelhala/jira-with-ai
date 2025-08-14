@@ -26,9 +26,11 @@ For each issue, analyze the content and assign the most fitting work type. Add a
 {
   "category": "work-type-value",
   "categoryName": "Work Type Name",
-  "confidence": "high/medium/low",
+  "confidence": "85%",
   "reasoning": "Brief explanation of why this category was chosen"
 }
+
+Note: Use percentage values for confidence (e.g., "95%", "80%", "65%") based on how certain you are about the classification.
 
 Return the issues in the same JSON format with the added workType field.
 
