@@ -74,35 +74,26 @@ async function processIssuesWithAI(issues, gemini) {
 
   if (action === 'skip') return;
 
-  let processedIssues = [...issues];
-
-  switch (action) {
-    case 'edit':
-      processedIssues = await handleEditIssues(issues, gemini);
-      break;
-
-    case 'analysis':
+  // Action handlers mapping
+  const actionHandlers = {
+    edit: () => handleEditIssues(issues, gemini),
+    analysis: async () => {
       await handleAnalyzeIssues(issues, gemini);
-      return; // Analysis doesn't modify issues
+      return null; // Special case: analysis doesn't modify issues
+    },
+    'story-points': () => handleStoryPoints(issues, gemini),
+    workflow: () => handleWorkflow(issues, gemini),
+    'work-type': () => handleWorkType(issues, gemini),
+  };
 
-    case 'story-points':
-      processedIssues = await handleStoryPoints(issues, gemini);
-      break;
+  const processedIssues = await actionHandlers[action]();
 
-    case 'workflow':
-      processedIssues = await handleWorkflow(issues, gemini);
-      break;
+  // Early return for analysis since it doesn't modify issues
+  if (action === 'analysis') return;
 
-    case 'work-type':
-      processedIssues = await handleWorkType(issues, gemini);
-      break;
-  }
-
-  // Save processed issues (except for analysis)
-  if (action !== 'analysis') {
-    saveIssues(processedIssues);
-    displayCompletion(processedIssues.length);
-  }
+  // Save processed issues
+  saveIssues(processedIssues);
+  displayCompletion(processedIssues.length);
 }
 
 /**
