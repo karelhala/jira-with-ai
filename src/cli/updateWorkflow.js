@@ -137,17 +137,21 @@ export async function selectSpecificTickets(selectedActionIssues) {
 function getActionDescription(action, issue) {
   switch (action) {
     case 'work-type': {
-      const currentWorkType = issue.ai_work_type || 'Not classified';
+      const currentWorkType = issue.workType?.categoryName || 'Not classified';
       return `Set work type to: ${currentWorkType}`;
     }
-    case 'edit':
-      return 'Apply AI-generated edits to title/description';
+    case 'edit': {
+      if (issue.aiEdit?.changes && issue.aiEdit.changes.length > 0) {
+        return `Apply AI edits to: ${issue.aiEdit.changes.join(', ')}`;
+      }
+      return 'Apply AI-generated edits';
+    }
     case 'story-points': {
-      const storyPoints = issue.ai_story_points || 'TBD';
+      const storyPoints = issue.storyPointEstimate?.points || 'TBD';
       return `Set story points to: ${storyPoints}`;
     }
     case 'workflow': {
-      const transition = issue.ai_transition || 'No transition';
+      const transition = issue.workflowRecommendation?.recommendedTransition || 'No transition';
       return `Transition to: ${transition}`;
     }
     default:
