@@ -19,6 +19,7 @@ import {
   getConfidenceThreshold,
   displayEligibleIssuesSummary,
   selectActionsToProcess,
+  selectSpecificTickets,
 } from './cli/updateWorkflow.js';
 import {
   displayWorkflowStatus,
@@ -85,8 +86,29 @@ async function handleUpdateWorkflow(processedIssues, dryRun = false) {
     return;
   }
 
-  // Process the selected actions
-  await processSelectedActions(selectedActions, eligibleIssues, jira, dryRun);
+  // Filter eligible issues to only include selected action types
+  const selectedActionIssues = {};
+  selectedActions.forEach(action => {
+    selectedActionIssues[action] = eligibleIssues[action];
+  });
+
+  // Let user select specific tickets for each action type
+  const finalSelectedIssues = await selectSpecificTickets(selectedActionIssues);
+
+  // Check if any tickets were actually selected
+  const totalSelectedTickets = Object.values(finalSelectedIssues).reduce(
+    (sum, arr) => sum + arr.length,
+    0
+  );
+  if (totalSelectedTickets === 0) {
+    console.log('\n✅ No tickets selected for update. Workflow completed.');
+    return;
+  }
+
+  console.log(`\n📋 Selected ${totalSelectedTickets} tickets total for update.`);
+
+  // Process the selected tickets
+  await processSelectedActions(selectedActions, finalSelectedIssues, jira, dryRun);
 }
 
 /**
