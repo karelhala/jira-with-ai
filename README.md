@@ -14,6 +14,7 @@ An interactive CLI tool for JIRA issue management powered by Google's Gemini AI.
 - **⚡ Batch Processing**: Handle large datasets efficiently (100 issues per batch)
 - **💾 Export Results**: Save processed issues to JSON files
 - **🛠️ Debug-Friendly**: Raw AI responses saved for inspection
+- **📝 Manual Execution**: Auto-generate bash scripts for manual JIRA updates
 
 ## 🚀 Installation
 
@@ -89,7 +90,9 @@ After AI processing, the application offers a smart update workflow where you ca
    - **AI Edits** → Apply summary/description changes
    - **Story Points** → Update story points field
    - **Workflow Transitions** → Apply state changes
-5. **🚀 Apply to JIRA**: Selectively update JIRA with high-confidence AI suggestions
+5. **📝 Select Specific Tickets**: Choose individual tickets to update for each action type
+6. **🚀 Apply to JIRA**: Selectively update JIRA with high-confidence AI suggestions
+7. **📜 Bash Scripts Generated**: Receive executable scripts for manual review and execution
 
 **Confidence Levels:**
 - **95%**: Very High Confidence (Most Restrictive)
@@ -97,6 +100,49 @@ After AI processing, the application offers a smart update workflow where you ca
 - **75%**: Medium-High Confidence  
 - **65%**: Medium Confidence
 - **50%**: Any Confidence (Least Restrictive)
+
+## 📝 Manual Execution Scripts
+
+For every JIRA update operation, the application automatically generates executable bash scripts that allow you to review and manually execute the exact API calls:
+
+### 🎯 **What's Generated**
+- **Timestamped Scripts**: `static/jira-update-{action}-{timestamp}.sh`
+- **Complete API Calls**: Ready-to-run curl commands with proper authentication
+- **Environment Setup**: Automatic JIRA URL and token configuration  
+- **Error Handling**: Success/failure tracking and reporting
+- **Prerequisites Guide**: Installation and setup instructions included
+
+### 🚀 **Usage**
+```bash
+# Make executable
+chmod +x static/jira-update-*.sh
+
+# Execute specific action script
+./static/jira-update-work-type-2025-01-15T10-30-45.sh
+
+# Review before execution
+cat static/jira-update-story-points-2025-01-15T10-31-20.sh
+```
+
+### ✅ **Benefits**
+- **Review Control**: Inspect exact API calls before execution
+- **Manual Timing**: Execute updates when convenient
+- **Audit Trail**: Keep scripts as records of changes
+- **Debugging**: Easy to modify and re-run specific updates
+- **Offline Capability**: Execute later without the CLI tool
+
+### 🔧 **Prerequisites for Script Execution**
+```bash
+# Install jq for JSON processing
+sudo apt-get install jq  # Ubuntu/Debian
+brew install jq          # macOS
+
+# Set environment variables
+export JIRA_TOKEN="your-jira-token"
+export IS_PROD="true"  # or "false" for staging
+```
+
+Scripts are generated in **both regular and dry run modes**, giving you maximum flexibility and control.
 
 ## 📊 Work Type Categories
 
@@ -130,6 +176,7 @@ npm run lint:fix  # Fix linting and formatting issues
 - **static/success_issues.json**: Successfully updated issues (moved from issues.json after JIRA updates)
 - **static/success.json**: Dry run results with simulated successful updates (dry run mode only)
 - **static/raw_*_*.txt**: Debug files with raw AI responses
+- **static/jira-update-*-{timestamp}.sh**: Executable bash scripts for manual JIRA updates
 
 ## 🤝 Contributing
 

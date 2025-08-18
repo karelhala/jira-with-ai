@@ -4,6 +4,7 @@ import { handleUpdateJiraEdit } from '../actions/updateJiraEdit.js';
 import { handleUpdateJiraStoryPoints } from '../actions/updateJiraStoryPoints.js';
 import { handleUpdateJiraWorkflow } from '../actions/updateJiraWorkflow.js';
 import { simulateJiraUpdates, saveDryRunResults } from './dryRunUtils.js';
+import { generateBashScript } from './bashScriptGenerator.js';
 import { DEFAULT_ISSUES_FILE } from '../constants.js';
 
 /**
@@ -21,6 +22,10 @@ export function createActionProcessors(dryRun = false) {
       });
 
       if (updateJira) {
+        // Always generate bash script for manual execution
+        const scriptPath = generateBashScript(actionIssues, 'work-type', dryRun);
+        console.log(`📝 Manual bash script generated: ${scriptPath}`);
+
         if (dryRun) {
           simulateJiraUpdates(actionIssues, 'work-type');
           saveDryRunResults(actionIssues, 'work-type');
@@ -37,6 +42,10 @@ export function createActionProcessors(dryRun = false) {
       });
 
       if (updateJira) {
+        // Always generate bash script for manual execution
+        const scriptPath = generateBashScript(actionIssues, 'edit', dryRun);
+        console.log(`📝 Manual bash script generated: ${scriptPath}`);
+
         if (dryRun) {
           simulateJiraUpdates(actionIssues, 'edit');
           saveDryRunResults(actionIssues, 'edit');
@@ -55,6 +64,10 @@ export function createActionProcessors(dryRun = false) {
       });
 
       if (updateJira) {
+        // Always generate bash script for manual execution
+        const scriptPath = generateBashScript(actionIssues, 'story-points', dryRun);
+        console.log(`📝 Manual bash script generated: ${scriptPath}`);
+
         if (dryRun) {
           simulateJiraUpdates(actionIssues, 'story-points');
           saveDryRunResults(actionIssues, 'story-points');
@@ -73,6 +86,10 @@ export function createActionProcessors(dryRun = false) {
       });
 
       if (updateJira) {
+        // Always generate bash script for manual execution
+        const scriptPath = generateBashScript(actionIssues, 'workflow', dryRun);
+        console.log(`📝 Manual bash script generated: ${scriptPath}`);
+
         if (dryRun) {
           simulateJiraUpdates(actionIssues, 'workflow');
           saveDryRunResults(actionIssues, 'workflow');
@@ -117,6 +134,16 @@ export async function processSelectedActions(
   }
 
   console.log(`\n🎉 ${dryRun ? '[DRY RUN] ' : ''}Update workflow completed!`);
+
+  // Announce bash script availability
+  console.log('\n📝 Manual execution scripts have been generated!');
+  console.log('🗂️  Find your bash scripts in the static/ directory:');
+  console.log('   • Each action type has its own timestamped script');
+  console.log('   • Scripts include complete JIRA API calls with curl');
+  console.log('   • Review and execute manually for full control');
+  console.log('\n💡 Usage:');
+  console.log('   chmod +x static/jira-update-*.sh');
+  console.log('   ./static/jira-update-work-type-*.sh');
 }
 
 /**
