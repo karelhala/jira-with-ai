@@ -21,12 +21,12 @@ export function generateBashScript(issues, action, dryRun = false) {
   // Ensure static directory exists
   try {
     mkdirSync(staticDir, { recursive: true });
-  } catch (error) {
+  } catch {
     // Directory might already exist, that's fine
   }
 
   let bashContent = generateBashHeader(action, dryRun);
-  
+
   for (const issue of issues) {
     const commands = generateIssueCommands(issue, action);
     if (commands.length > 0) {
@@ -39,7 +39,7 @@ export function generateBashScript(issues, action, dryRun = false) {
 
   writeFileSync(scriptPath, bashContent, 'utf8');
   console.log(`📝 Generated bash script: static/${filename}`);
-  
+
   return scriptPath;
 }
 
@@ -51,7 +51,7 @@ export function generateBashScript(issues, action, dryRun = false) {
  */
 function generateBashHeader(action, dryRun) {
   const dryRunNote = dryRun ? '\n# [DRY RUN MODE] Review these commands before execution!' : '';
-  
+
   return `#!/bin/bash
 
 # JIRA ${action.toUpperCase()} Update Script
@@ -135,9 +135,36 @@ function generateWorkTypeCommands(issue) {
     return [`# Skipping ${issue.key} - no work type classification`];
   }
 
-  const workType = WORK_TYPES.find(wt => wt.value === issue.workType.category);
+  // Map work type value to JIRA ID with fallback matching
+  let workType = WORK_TYPES.find(wt => wt.value === issue.workType.category);
+
+  // Fallback: try to match by partial string matching if exact match fails
   if (!workType) {
-    return [`# Skipping ${issue.key} - unknown work type: ${issue.workType.category}`];
+    const category = issue.workType.category.toLowerCase();
+    workType = WORK_TYPES.find(wt => {
+      const wtValue = wt.value.toLowerCase();
+      const wtName = wt.name.toLowerCase();
+
+      // Check if category matches the value or if there's substantial overlap
+      return (
+        category === wtValue ||
+        category.includes(wtValue) ||
+        wtValue.includes(category) ||
+        // Special case for quality-stability variations
+        (category.includes('quality') &&
+          category.includes('stability') &&
+          wtValue === 'quality-stability') ||
+        // Match by name similarity
+        category.replace(/[^a-z]/g, '') === wtName.replace(/[^a-z]/g, '')
+      );
+    });
+  }
+
+  if (!workType) {
+    return [
+      `# Skipping ${issue.key} - unknown work type: ${issue.workType.category}`,
+      `# Available work types: ${WORK_TYPES.map(wt => wt.value).join(', ')}`,
+    ];
   }
 
   const updateData = {

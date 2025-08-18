@@ -13,20 +13,27 @@ import { WORK_TYPES } from '../constants.js';
 export async function handleWorkType(issues, gemini) {
   return await processBatches(issues, async (batch, batchNumber) => {
     const sanitizedBatch = prepareIssuesForGemini(batch);
-    const workTypesDescription = WORK_TYPES.map(wt => `- ${wt.name}: ${wt.description}`).join('\n');
+    const workTypesDescription = WORK_TYPES.map(
+      wt => `- **${wt.name}** (use value: "${wt.value}"): ${wt.description}`
+    ).join('\n');
 
     const prompt = `Analyze these JIRA issues and classify each one into the most appropriate work type category based on the issue's summary, issue type, and priority.
 
-Available work type categories:
+Available work type categories (use the EXACT value specified):
 ${workTypesDescription}
 
 For each issue, analyze the content and assign the most fitting work type. Add a "workType" field with the following structure:
 {
-  "category": "work-type-value",
+  "category": "exact-value-from-above",
   "categoryName": "Work Type Name",
   "confidence": "85%",
   "reasoning": "Brief explanation of why this category was chosen based on issue type, summary, and priority"
 }
+
+IMPORTANT: Use the exact "value" specified above for the "category" field. For example:
+- For "Quality / Stability / Reliability" → use "quality-stability"
+- For "Associate well being" → use "associate-wellbeing"
+- For "Security and compliance" → use "security-compliance"
 
 Note: Use percentage values for confidence (e.g., "95%", "80%", "65%") based on how certain you are about the classification.
 

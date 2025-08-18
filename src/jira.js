@@ -149,11 +149,34 @@ JiraBot.prototype.updateWorkType = async function (issues) {
       continue;
     }
 
-    // Map Gemini's work type value to JIRA ID
-    const workType = WORK_TYPES.find(wt => wt.value === issue.workType.category);
+    // Map Gemini's work type value to JIRA ID with fallback matching
+    let workType = WORK_TYPES.find(wt => wt.value === issue.workType.category);
+
+    // Fallback: try to match by partial string matching if exact match fails
+    if (!workType) {
+      const category = issue.workType.category.toLowerCase();
+      workType = WORK_TYPES.find(wt => {
+        const wtValue = wt.value.toLowerCase();
+        const wtName = wt.name.toLowerCase();
+
+        // Check if category matches the value or if there's substantial overlap
+        return (
+          category === wtValue ||
+          category.includes(wtValue) ||
+          wtValue.includes(category) ||
+          // Special case for quality-stability variations
+          (category.includes('quality') &&
+            category.includes('stability') &&
+            wtValue === 'quality-stability') ||
+          // Match by name similarity
+          category.replace(/[^a-z]/g, '') === wtName.replace(/[^a-z]/g, '')
+        );
+      });
+    }
 
     if (!workType) {
       console.log(`⚠️ Skipping ${issue.key} - unknown work type: ${issue.workType.category}`);
+      console.log(`   Available work types: ${WORK_TYPES.map(wt => wt.value).join(', ')}`);
       results.push({
         issueKey: issue.key,
         status: 'skipped',
