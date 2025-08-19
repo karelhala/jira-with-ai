@@ -1,11 +1,11 @@
 {
   "name": "@khala/jira-ai",
-  "version": "0.0.1",
+  "version": "1.0.1",
   "description": "Interactive CLI tool for JIRA issue management with Gemini AI",
   "main": "src/index.js",
   "type": "module",
   "bin": {
-    "jira-gemini": "./src/index.js"
+    "jira-gemini": "src/index.js"
   },
   "files": [
     "src/",

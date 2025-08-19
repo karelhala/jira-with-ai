@@ -20,7 +20,7 @@ An interactive CLI tool for JIRA issue management powered by Google's Gemini AI.
 
 ```bash
 # Run directly with npx (recommended)
-npx jira-gemini
+npx @khala/jira-ai
 
 # Or install globally
 npm install -g @khala/jira-ai
@@ -48,16 +48,16 @@ jira-gemini
 
 Run the interactive CLI:
 ```bash
-npx jira-gemini
+npx @khala/jira-ai
 ```
 
 ### 🔍 Dry Run Mode
 
 Test the application without making actual changes to JIRA:
 ```bash
-npx jira-gemini --dry-run
+npx @khala/jira-ai --dry-run
 # or
-npx jira-gemini -d
+npx @khala/jira-ai -d
 ```
 
 In dry run mode:
